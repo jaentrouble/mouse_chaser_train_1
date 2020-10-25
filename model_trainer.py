@@ -15,35 +15,39 @@ from pathlib import Path
 import os
 import pickle
 
-class ClassifierModel(keras.Model):
-    """ClassifierModel
-    Predicts logits.
-    Takes raw input in uint8 dtype.
+class ChaserModel(keras.Model):
+    """ChaserModel
+    Gets an image and returns a heatmap
+
+    Input
+    -----
+    input : tf.Tensor
+        image tensor. Expects it to be tf.uint8 i.e. raw image
     
     Output
     ------
-    logits : tf.Tensor
+    heatmaps : dict of heatmaps
+        {'name' : tf.Tensor}
     """
     def __init__(self, inputs, backbone_f, specific_fs):
         """
-        Because of numerical stability, softmax layer should be
-        taken out, and use it only when not training.
-        Args
+        Arguments
+        ---------
             inputs : keras.Input
             backbone_f : function used universally across multiple outputs
             specific_fs : dict {'name' : model_function}
         """
         super().__init__()
         backbone_out = backbone_f(inputs)
-        outputs = []
-        for out_name, f in specific_fs.items():
-            outputs.append(f(backbone_out, out_name))
-        self.logits = keras.Model(inputs=inputs, outputs=outputs)
-        self.logits.summary()
+        outputs = {}
+        for out_name, sf in specific_fs.items():
+            outputs[out_name]=(sf(backbone_out, out_name))
+        self.heatmaps = keras.Model(inputs=inputs, outputs=outputs)
+        self.heatmaps.summary()
         
     def call(self, inputs, training=None):
         casted = tf.cast(inputs, tf.float32) / 255.0
-        return self.logits(inputs, training=training)
+        return self.heatmaps(inputs, training=training)
 
 class AugGenerator():
     """An iterable generator that makes augmented mouserec data
@@ -96,7 +100,6 @@ class AugGenerator():
             A.Resize(img_size[0], img_size[1]),
             # A.Cutout(8,img_size[0]//12,img_size[1]//12)
         ],
-        #TODO : implement keypoint aug
         # Unify all points order to 'ij' format i.e. 'yx' format
         keypoint_params=A.KeypointParams(format='yx',label_fields=['class_labels'])
         )
@@ -181,7 +184,12 @@ class ValGenerator(AugGenerator):
             IMPORTANT : (HEIGHT, WIDTH)
         """
         super().__init__(data_dir, class_labels, img_size)
-        self.aug = A.Resize(img_size[0], img_size[1])
+        self.aug = A.Compose([
+            A.Resize(img_size[0], img_size[1]),
+        ],
+        # Unify all points order to 'ij' format i.e. 'yx' format
+        keypoint_params=A.KeypointParams(format='yx',label_fields=['class_labels'])
+        )
 
 def create_train_dataset(
         data_dir, 
@@ -247,11 +255,12 @@ def create_train_dataset(
 #     return test_model
 
 class ValFigCallback(keras.callbacks.Callback):
-    def __init__(self, val_ds, logdir, label_names):
+    def __init__(self, val_ds, logdir, class_labels):
         super().__init__()
         self.val_ds = val_ds
         self.filewriter = tf.summary.create_file_writer(logdir+'/val_image')
-        self.label_names = label_names
+        self.class_labels = class_labels
+        self.class_num = len(class_labels)
 
     def plot_to_image(self, figure):
         """Converts the matplotlib plot specified by 'figure' to a PNG image and
@@ -270,17 +279,22 @@ class ValFigCallback(keras.callbacks.Callback):
         return image
 
     def val_result_fig(self):
-        sample = self.val_ds.take(1).as_numpy_iterator()
-        sample = next(sample)
-        sample_x = sample[0]
-        sample_y = sample[1]
-        predict = self.model(sample_x, training=False).numpy()
+        samples = self.val_ds.take(4).as_numpy_iterator()
         fig = plt.figure(figsize=(15,15))
-        for i in range(5):
-            ax = fig.add_subplot(5,1,i+1)
-            img = sample_x[i]
-            ax.imshow(img)
-            ax.title.set_text(self.label_names[np.argmax(predict[i])])
+        for i in range(4):
+            sample = next(samples)
+            sample_x = sample[0]
+            predict = self.model(sample_x, training=False)
+            for j, cname in enumerate(self.class_labels):
+                sample_y = sample[1][cname][0]
+                ax = fig.add_subplot(8,self.class_num,2*self.class_num*i+j+1)
+                ax.imshow(sample_x[0], alpha=0.5)
+                ax.imshow(sample_y,alpha=0.5)
+                ax = fig.add_subplot(8,self.class_num,
+                                     2*self.class_num*i+j+self.class_num+1)
+                ax.imshow(sample_x[0], alpha=0.5)
+                ax.imshow(predict[cname][0],alpha=0.5)
+
         return fig
 
     def on_epoch_end(self, epoch, logs=None):
@@ -289,16 +303,16 @@ class ValFigCallback(keras.callbacks.Callback):
             tf.summary.image('val prediction', image, step=epoch)
 
 def run_training(
-        model_f, 
+        backbone_f,
+        specific_fs, 
         lr_f, 
         name, 
-        epochs, 
-        batch_size, 
+        epochs,
+        steps_per_epoch,
+        batch_size,
+        class_labels, 
         train_dir,
-        label_dict,
         val_dir,
-        val_labels,
-        id_to_name,
         img_size,
         mixed_float = True,
         notebook = True,
@@ -306,8 +320,10 @@ def run_training(
         profile = False,
     ):
     """
-    val_data : (X_val, Y_val) tuple
+    img_size:
+        (HEIGHT, WIDTH)
     """
+
     if mixed_float:
         policy = mixed_precision.Policy('mixed_float16')
         mixed_precision.set_policy(policy)
@@ -315,17 +331,14 @@ def run_training(
     st = time.time()
 
     inputs = keras.Input((img_size[0],img_size[1],3))
-    mymodel = ClassifierModel(inputs, model_f)
+    mymodel = ChaserModel(inputs, backbone_f, specific_fs)
     if load_model_path:
         mymodel.load_weights(load_model_path)
         print('loaded from : ' + load_model_path)
-    loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    loss = keras.losses.MeanSquaredError()
     mymodel.compile(
         optimizer='adam',
         loss=loss,
-        metrics=[
-            keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-        ]
     )
 
     logdir = 'logs/fit/' + name
@@ -333,7 +346,7 @@ def run_training(
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
             log_dir=logdir,
             histogram_freq=1,
-            profile_batch='3,5',
+            profile_batch='7,9',
             update_freq='epoch'
         )
     else :
@@ -353,33 +366,33 @@ def run_training(
     )
 
     if notebook:
-        tqdm_callback = TqdmNotebookCallback(metrics=['loss','accuracy'],
+        tqdm_callback = TqdmNotebookCallback(metrics=['loss'],
                                             leave_inner=False)
     else:
         tqdm_callback = TqdmCallback()
 
-    train_names = os.listdir(train_dir)
-
     train_ds = create_train_dataset(
         train_dir,
-        train_names,
-        label_dict,
+        class_labels,
         img_size,
         batch_size,
+        buffer_size=1000
     )
-    val_ds = imagenet_val_dataset(
-        val_dir,
-        val_labels,
+    val_ds = create_train_dataset(
+        train_dir,
+        class_labels,
         img_size,
         batch_size,
+        buffer_size=100,
+        val_data=True,
     )
 
-    image_callback = ValFigCallback(val_ds, logdir, id_to_name)
+    image_callback = ValFigCallback(val_ds, logdir, class_labels)
 
     mymodel.fit(
         x=train_ds,
         epochs=epochs,
-        steps_per_epoch=len(train_names)//batch_size,
+        steps_per_epoch=steps_per_epoch,
         # steps_per_epoch=10,
         callbacks=[
             tensorboard_callback,
