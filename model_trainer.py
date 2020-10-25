@@ -407,7 +407,11 @@ def run_training(
     )
 
 
-    print('Took {} seconds'.format(time.time()-st))
+    delta = time.time()-st
+    hours, remain = divmod(delta, 3600)
+    minutes, seconds = divmod(remain, 60)
+    print(f'Took {hours:.0f} hours {minutes:.0f} minutes {seconds:.2f} seconds')
+
 
 if __name__ == '__main__':
     import os
