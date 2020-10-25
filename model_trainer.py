@@ -13,6 +13,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 import os
+import pickle
 
 class ClassifierModel(keras.Model):
     """ClassifierModel
@@ -23,17 +24,20 @@ class ClassifierModel(keras.Model):
     ------
     logits : tf.Tensor
     """
-    def __init__(self, inputs, model_function):
+    def __init__(self, inputs, backbone_f, specific_fs):
         """
         Because of numerical stability, softmax layer should be
         taken out, and use it only when not training.
         Args
             inputs : keras.Input
-            model_function : function that takes keras.Input and returns
-            output tensor of logits
+            backbone_f : function used universally across multiple outputs
+            specific_fs : dict {'name' : model_function}
         """
         super().__init__()
-        outputs = model_function(inputs)
+        backbone_out = backbone_f(inputs)
+        outputs = []
+        for out_name, f in specific_fs.items():
+            outputs.append(f(backbone_out, out_name))
         self.logits = keras.Model(inputs=inputs, outputs=outputs)
         self.logits.summary()
         
@@ -42,7 +46,7 @@ class ClassifierModel(keras.Model):
         return self.logits(inputs, training=training)
 
 class AugGenerator():
-    """An iterable generator that makes augmented ImageNet image data
+    """An iterable generator that makes augmented mouserec data
 
     NOTE: 
         Every img is reshaped to img_size
@@ -51,48 +55,50 @@ class AugGenerator():
     ------
     X : np.array, dtype= np.uint8
         shape : (HEIGHT, WIDTH, 3)
-    Y : np.array, dtype= np.float32
+        color : RGB
+    Y : dictionary of heatmaps
+        {'name' : (HEIGHT, WIDTH, 1)}
     """
-    def __init__(self, img_dir, img_names, label_dict, img_size):
+    def __init__(self, data_dir, class_labels, img_size):
         """ 
         arguments
         ---------
-        img_dir : str
-            path to the image directory
-        img_names : list
-            list of image names. img_dir/img_name should be the full path
-            image name should be 
-        label_dict : dict
-            dictionary mapping from ID -> category number
+        data_dir : str
+            path to the data directory (which has pickled files)
+        class_labels : list of str
+            list of classes to extract data
         img_size : tuple
             Desired output image size
             IMPORTANT : (HEIGHT, WIDTH)
         """
-        self.img_dir = img_dir
-        self.img_names = img_names
-        self.label_dict = label_dict
+        self.class_labels = class_labels
+        self.img_size = img_size
+        self.data_dir = Path(data_dir)
+        self.raw_data = []
+        for pk_name in os.listdir(self.data_dir):
+            with open(self.data_dir/pk_name,'rb') as f:
+                self.raw_data.extend(pickle.load(f))
         
-        # Find label numbers prior to save time
-        self.img_labels = \
-            [self.label_dict[n.split('_')[0]] for n in self.img_names]
-
-        self.n = len(img_names)
+        self.n = len(self.raw_data)
         self.output_size = img_size
         self.aug = A.Compose([
-            A.OneOf([
-                A.RandomGamma((40,200),p=1),
-                A.RandomBrightness(limit=0.5, p=1),
-                A.RandomContrast(limit=0.5,p=1),
-                A.RGBShift(40,40,40,p=1),
-                A.Downscale(scale_min=0.25,scale_max=0.5,p=1),
-                A.ChannelShuffle(p=1),
-            ], p=0.8),
-            A.InvertImg(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=1),
+            # A.OneOf([
+            #     A.RandomGamma((40,200),p=1),
+            #     A.RandomBrightness(limit=0.5, p=1),
+            #     A.RandomContrast(limit=0.5,p=1),
+            #     A.RGBShift(40,40,40,p=1),
+            #     A.Downscale(scale_min=0.25,scale_max=0.5,p=1),
+            #     A.ChannelShuffle(p=1),
+            # ], p=0.8),
+            # A.InvertImg(p=0.5),
+            # A.VerticalFlip(p=0.5),
+            # A.RandomRotate90(p=1),
             A.Resize(img_size[0], img_size[1]),
-            A.Cutout(8,img_size[0]//12,img_size[1]//12)
+            # A.Cutout(8,img_size[0]//12,img_size[1]//12)
         ],
+        #TODO : implement keypoint aug
+        # Unify all points order to 'ij' format i.e. 'yx' format
+        keypoint_params=A.KeypointParams(format='yx',label_fields=['class_labels'])
         )
 
     def __iter__(self):
@@ -103,70 +109,116 @@ class AugGenerator():
 
     def __next__(self):
         idx = random.randrange(0,self.n)
-
-        image_name = self.img_names[idx]
-        label = self.img_labels[idx]
-        full_path = os.path.join(self.img_dir,image_name)
-        image = cv2.cvtColor(cv2.imread(full_path,cv2.IMREAD_COLOR),
-                                        cv2.COLOR_BGR2RGB)
+        datum = self.raw_data[idx]
         
+        image = datum['image'].swapaxes(0,1)
+        keypoints = []
+        for cname in self.class_labels:
+            keypoints.append((datum[cname][1],datum[cname][0]))
+                
         distorted = self.aug(
             image=image,
+            keypoints=keypoints,
+            class_labels=self.class_labels,
         )
+        distorted_keypoints = distorted['keypoints']
+        distorted_class_labels = distorted['class_labels']
+        heatmaps = {}
+        for cname in self.class_labels:
+            if cname in distorted_class_labels:
+                r, c = distorted_keypoints[distorted_class_labels.index(cname)]
+                heatmaps[cname] = self.gaussian_heatmap(r,c,self.img_size)
+            else:
+                heatmaps[cname] = np.zeros(self.img_size,dtype=np.float32)
 
-        return distorted['image'], label
+
+        return distorted['image'], heatmaps
+
+    def gaussian_heatmap(self, r, c, shape, sigma=10):
+        """
+        Returns a heat map of a point
+        Shape is expected to be (HEIGHT, WIDTH)
+        [r,c] should be the point i.e. opposite of pygame notation.
+
+        Parameters
+        ----------
+        r : int
+            row of the point
+        c : int
+            column of the point
+        shape : tuple of int
+            (HEIGHT, WIDTH)
+
+        Returns
+        -------
+        heatmap : np.array
+            shape : (HEIGHT, WIDTH)
+        """
+        coordinates = np.stack(np.meshgrid(
+            np.arange(shape[0],dtype=np.float32),
+            np.arange(shape[1],dtype=np.float32),
+            indexing='ij',
+        ), axis=-1)
+        keypoint = np.array([r,c]).reshape((1,1,2))
+        heatmap = np.exp(-(np.sum((coordinates-keypoint)**2,axis=-1))/(2*sigma**2))
+
+        return heatmap
 
 class ValGenerator(AugGenerator):
     """Same as AugGenerator, but without augmentation.
     Only resizes the image
     """
-    def __init__(self, img_dir, img_names, label_dict, img_size):
+    def __init__(self, data_dir, class_labels, img_size):
         """ 
         arguments
         ---------
-        img_dir : str
-            path to the image directory
-        img_names : list
-            list of image names. img_dir/img_name should be the full path
-            image name should be 
-        label_dict : dict
-            dictionary mapping from ID -> category number
+        data_dir : str
+            path to the data directory (which has pickled files)
+        class_labels : list of str
+            list of classes to extract data
         img_size : tuple
             Desired output image size
-            IMPORTANT : (WIDTH, HEIGHT)
+            IMPORTANT : (HEIGHT, WIDTH)
         """
-        super().__init__(img_dir, img_names, label_dict, img_size)
+        super().__init__(data_dir, class_labels, img_size)
         self.aug = A.Resize(img_size[0], img_size[1])
 
 def create_train_dataset(
-        img_dir, 
-        img_names, 
-        label_dict, 
+        data_dir, 
+        class_labels, 
         img_size, 
         batch_size, 
         buffer_size=1000,
         val_data=False):
+    """
+    Note: img_size = (HEIGHT,WIDTH)
+    """
     autotune = tf.data.experimental.AUTOTUNE
     if val_data:
         generator = ValGenerator(
-            img_dir,
-            img_names,
-            label_dict,
+            data_dir,
+            class_labels,
             img_size,
         )
     else:
         generator = AugGenerator(
-            img_dir,
-            img_names,
-            label_dict,
+            data_dir,
+            class_labels,
             img_size,
         )
+    output_dict = {}
+    output_types = {}
+    for cname in class_labels:
+        output_dict[cname] = tf.TensorShape([img_size[0],img_size[1]])
+        output_types[cname] = tf.float32
+    
+
     dataset = tf.data.Dataset.from_generator(
         generator,
-        output_types=(tf.uint8, tf.int64),
+        output_types=(tf.uint8, output_types),
         output_shapes=(
             tf.TensorShape([img_size[0],img_size[1],3]), 
-            tf.TensorShape([])
+            output_dict,
         ),
     )
     dataset = dataset.shuffle(buffer_size)
@@ -176,50 +228,23 @@ def create_train_dataset(
 
     return dataset
 
-def imagenet_val_dataset(
-        img_dir, 
-        true_labels, 
-        img_size,
-        batch_size,
-        buffer_size=1000,
-    ):
-    autotune = tf.data.experimental.AUTOTUNE
-    img_names = sorted(os.listdir(img_dir))
-    img_full = [os.path.join(img_dir,n) for n in img_names]
 
-    dataset = tf.data.Dataset.from_tensor_slices((img_full,true_labels))
-
-    dataset = dataset.map(partial(parse_image,img_size=img_size))
-    dataset = dataset.shuffle(buffer_size)
-    dataset = dataset.batch(batch_size, drop_remainder=True)
-    dataset = dataset.prefetch(autotune)
-    dataset = dataset.repeat()
-
-    return dataset
-
-def parse_image(filename, label, img_size=None):
-    image = tf.io.read_file(filename)
-    image = tf.image.decode_jpeg(image,channels=3)
-    image = tf.image.resize(image, img_size)
-    image = tf.cast(image,tf.uint8)
-    return image, label
-
-def get_model(model_f, img_size):
-    """
-    To get model only and load weights.
-    """
-    # policy = mixed_precision.Policy('mixed_float16')
-    # mixed_precision.set_policy(policy)
-    inputs = keras.Input((img_size[0],img_size[1],3))
-    test_model = ClassifierModel(inputs, model_f)
-    test_model.compile(
-        optimizer='adam',
-        loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=[
-            keras.metrics.SparseCategoricalAccuracy(),
-        ]
-    )
-    return test_model
+# def get_model(model_f, img_size):
+#     """
+#     To get model only and load weights.
+#     """
+#     # policy = mixed_precision.Policy('mixed_float16')
+#     # mixed_precision.set_policy(policy)
+#     inputs = keras.Input((img_size[0],img_size[1],3))
+#     test_model = ClassifierModel(inputs, model_f)
+#     test_model.compile(
+#         optimizer='adam',
+#         loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+#         metrics=[
+#             keras.metrics.SparseCategoricalAccuracy(),
+#         ]
+#     )
+#     return test_model
 
 class ValFigCallback(keras.callbacks.Callback):
     def __init__(self, val_ds, logdir, label_names):
@@ -373,70 +398,21 @@ def run_training(
 
 if __name__ == '__main__':
     import os
-    import imageio as io
-    import json
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from skimage import draw
-    import cv2
-    from pathlib import Path
+    data_dir = 'data/save'
 
-    data_dir = Path('data')
-    data_groups = next(os.walk(data_dir))[1]
-    img = []
-    data = []
-    img_name_dict = {}
-    img_idx = 0
-    for dg in data_groups[:]:
-        img_dir = data_dir/dg/'done'
-        img_names = os.listdir(img_dir)
-        for name in img_names:
-            img_path = str(img_dir/name)
-            img.append(io.imread(img_path))
-            img_name_dict[img_path] = img_idx
-            img_idx += 1
-
-        json_dir = data_dir/dg/'save'
-        json_names = os.listdir(json_dir)
-        dg_data = []
-        for name in json_names[:]:
-            with open(str(json_dir/name),'r') as j:
-                dg_data.extend(json.load(j))
-        for dg_datum in dg_data :
-            long_img_name = str(img_dir/dg_datum['image'])
-            dg_datum['image'] = img_name_dict[long_img_name]
-        data.extend(dg_data)
-
-    # fig = plt.figure()
-    # d_idx = random.randrange(0,len(data)-5)
-    # for i, d in enumerate(data[d_idx:d_idx+5]):
-    #     image = img[d['image']].copy()
-    #     image = cv2.resize(image, (1200,900), interpolation=cv2.INTER_LINEAR)
-    #     mask = d['mask']
-    #     m_idx = random.randrange(0,len(mask[0]))
-    #     pos = (mask[0][m_idx], mask[1][m_idx])
-    #     boxmin = d['box'][0]
-    #     boxmax = d['box'][1]
-    #     rr, cc = draw.disk((pos[1],pos[0]),5)
-    #     image[rr, cc] = [0,255,0]
-    #     rr, cc = draw.rectangle_perimeter((boxmin[1],boxmin[0]),(boxmax[1],boxmax[0]))
-    #     image[rr,cc] = [255,0,0]
-    #     image[mask[1],mask[0]] = [100,100,100]
-    #     ax = fig.add_subplot(5,1,i+1)
-    #     ax.imshow(image)
-    # plt.show()
-
-    # gen = AugGenerator(img, data, (400,400))
-    # s = next(gen)
-
-    ds = create_train_dataset(img, data, (200,200),1, False)
+    ds = create_train_dataset(data_dir, ['nose','tail'], (480,640),1,200)
     sample = ds.take(5).as_numpy_iterator()
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,10))
     for i, s in enumerate(sample):
-        ax = fig.add_subplot(5,2,2*i+1)
-        img = s[0][0].swapaxes(0,1)
+        ax = fig.add_subplot(5,3,3*i+1)
+        img = s[0][0]
         ax.imshow(img)
-        ax = fig.add_subplot(5,2,2*i+2)
-        mask = s[1][0].swapaxes(0,1)
-        ax.imshow(mask)
+        ax = fig.add_subplot(5,3,3*i+2)
+        nose = s[1]['nose'][0]
+        ax.imshow(img,alpha=0.5)
+        ax.imshow(nose,alpha=0.5)
+        ax = fig.add_subplot(5,3,3*i+3)
+        tail = s[1]['tail'][0]
+        ax.imshow(img,alpha=0.5)
+        ax.imshow(tail,alpha=0.5)
     plt.show()
