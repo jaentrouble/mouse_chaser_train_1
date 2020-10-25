@@ -57,8 +57,8 @@ train_dir = 'data/save'
 val_dir = 'data/save'
 
 specific_fs={
-    'nose' : partial(specific_models.conv_squeeze, 3),
-    'tail' : partial(specific_models.conv_squeeze, 3),
+    'nose' : specific_models.conv3_16,
+    'tail' : specific_models.conv3_16,
 }
 
 backbone_f = getattr(backbone_models, args.model)
