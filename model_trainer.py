@@ -95,7 +95,8 @@ class AugGenerator():
             #     A.ChannelShuffle(p=1),
             # ], p=0.8),
             # A.InvertImg(p=0.5),
-            # A.VerticalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.HorizontalFlip(p=0.5)
             # A.RandomRotate90(p=1),
             A.Resize(img_size[0], img_size[1]),
             # A.Cutout(8,img_size[0]//12,img_size[1]//12)
