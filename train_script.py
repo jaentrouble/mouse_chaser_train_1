@@ -54,7 +54,7 @@ if args.mem_limit:
 
 
 train_dir = 'data/save'
-val_dir = 'data/save'
+val_dir = 'data/val'
 
 specific_fs={
     'nose' : specific_models.conv3_16,
