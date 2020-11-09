@@ -418,7 +418,7 @@ def run_training(
         buffer_size=1000
     )
     val_ds = create_train_dataset(
-        train_dir,
+        val_dir,
         class_labels,
         img_size,
         batch_size,
