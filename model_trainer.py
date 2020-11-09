@@ -316,14 +316,14 @@ class MaxPointDistL2(keras.metrics.Metric):
         self.count = self.add_weight(name='count', initializer='zeros')
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        true_max_pos = tf.unravel_index(tf.math.argmax(
+        true_max_pos = tf.cast(tf.unravel_index(tf.math.argmax(
             tf.reshape(y_true,(y_true.shape[0],-1)),
             axis=1
-        ), y_true.shape[1:])
-        pred_max_pos = tf.unravel_index(tf.math.argmax(
+        ), y_true.shape[1:]),tf.float32)
+        pred_max_pos = tf.cast(tf.unravel_index(tf.math.argmax(
             tf.reshape(y_pred,(y_pred.shape[0],-1)),
             axis=1
-        ), y_pred.shape[1:])
+        ), y_pred.shape[1:]),tf.float32)
         l2_dist = tf.math.sqrt(tf.math.reduce_sum(tf.math.squared_difference(
             true_max_pos, pred_max_pos),axis=0))
         if sample_weight is not None:
