@@ -327,7 +327,7 @@ class MaxPointDistL2(keras.metrics.Metric):
         l2_dist = tf.math.sqrt(tf.math.reduce_sum(tf.math.squared_difference(
             true_max_pos, pred_max_pos),axis=0))
         if sample_weight is not None:
-            sample_weight = tf.cast(sample_weioght, tf.float32)
+            sample_weight = tf.cast(sample_weight, tf.float32)
             l2_dist = tf.multiply(l2_dist, sample_weight)
         self.total.assign_add(tf.reduce_mean(l2_dist))
         self.count.assign_add(1.0)
