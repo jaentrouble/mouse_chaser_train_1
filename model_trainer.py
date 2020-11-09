@@ -303,6 +303,43 @@ class ValFigCallback(keras.callbacks.Callback):
         with self.filewriter.as_default():
             tf.summary.image('val prediction', image, step=epoch)
 
+class MaxPointDistL2(keras.metrics.Metric):
+    """MaxPointDistL2
+    
+    Pick a max value point from y_pred and y_true each, and calculate
+    L2 distance between two points.
+    
+    """
+    def __init__(self, name='max_point_distance', **kwargs):
+        super().__init__(name=name,**kwargs)
+        self.total = self.add_weight(name='mpd', initializer='zeros')
+        self.count = self.add_weight(name='count', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        true_max_pos = tf.unravel_index(tf.math.argmax(
+            tf.reshape(y_true,(y_true.shape[0],-1)),
+            axis=1
+        ), y_true.shape[1:])
+        pred_max_pos = tf.unravel_index(tf.math.argmax(
+            tf.reshape(y_pred,(y_pred.shape[0],-1)),
+            axis=1
+        ), y_pred.shape[1:])
+        l2_dist = tf.math.sqrt(tf.math.reduce_sum(tf.math.squared_difference(
+            true_max_pos, pred_max_pos),axis=0))
+        if sample_weight is not None:
+            sample_weight = tf.cast(sample_weioght, tf.float32)
+            l2_dist = tf.multiply(l2_dist, sample_weight)
+        self.total.assign_add(tf.reduce_mean(l2_dist))
+        self.count.assign_add(1.0)
+
+    def result(self):
+        return self.total / self.count
+
+    def reset_states(self):
+        self.total.assign(0.0)
+        self.count.assign(0.0)
+    
+
 def run_training(
         backbone_f,
         specific_fs, 
@@ -340,6 +377,7 @@ def run_training(
     mymodel.compile(
         optimizer='adam',
         loss=loss,
+        metrics=[MaxPointDistL2(name='mpd'),]
     )
 
     logdir = 'logs/fit/' + name
