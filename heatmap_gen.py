@@ -14,6 +14,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-bb','--backbone', dest='backbone')
 parser.add_argument('-v','--video',dest='video')
+parser.add_argument('-b','--batch',dest='batch')
 parser.add_argument('--load',dest='load')
 args = parser.parse_args()
 
@@ -69,7 +70,7 @@ test_model = ChaserModel(tf.keras.Input((240,320,3)),bb_model,sp_model)
 test_model.load_weights(str(model_path))
 original_wh = (640, 480)
 model_wh = (320, 240)
-batch_size = 32
+batch_size = int(args.batch)
 original_hw = (original_wh[1],original_wh[0])
 model_hw = (model_wh[1], model_wh[0])
 heatmap = np.zeros(original_hw, dtype=np.float)
