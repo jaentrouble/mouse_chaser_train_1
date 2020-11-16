@@ -76,7 +76,7 @@ for v_i in trange(len(vid_names)):
         # Only nose
         nose_hms = output['nose']
         rr, cc = np.unravel_index(nose_hms.reshape((nose_hms.shape[0],-1)).argmax(axis=1),nose_hms.shape[1:])
-        rr, cc = np.around(np.multiply([rr,cc],hw_ratio)).astype(np.int)
+        rr, cc = np.around(np.multiply([rr,cc],hw_ratio[:,np.newaxis])).astype(np.int)
         for j in range(batch_size):
             original_frame = original_frames[i*batch_size+j]
             heatmap[rr[j],cc[j]] += 1
