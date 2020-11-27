@@ -288,7 +288,7 @@ class HighResolutionModule(layers.Layer):
         if self.num_branches != len(self.blocks):
             err_msg = (f'NUM_BRANCHES {self.num_branches} !='
                         f'NUM_BLOCKS {len(self.blocks)}')
-            raise ValueError()
+            raise ValueError(err_msg)
 
     def build(self, input_shape):
         if not isinstance(input_shape,list):
