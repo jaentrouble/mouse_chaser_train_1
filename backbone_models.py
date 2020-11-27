@@ -35,3 +35,11 @@ def hr_5_3_8(inputs):
         name='Fusion_0'
     )(x)[0]
     return outputs
+
+def ehr_112_11(inputs):
+    features = clayers.EfficientHRNet_B0(
+        filters=[12,22,44,86] ,
+        blocks =[2,2,4],      # Model from the Paper has 2x blocks
+        name='EffHRNet'
+    )(inputs)
+    return features

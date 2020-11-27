@@ -54,11 +54,11 @@ if args.mem_limit:
 
 
 train_dir = 'data/save'
-val_dir = 'data/val'
+val_dir = 'data/save'
 
 specific_fs={
-    'nose' : specific_models.conv3_16,
-    'tail' : specific_models.conv3_16,
+    'nose' : specific_models.conv_squeeze_double,
+    'tail' : specific_models.conv_squeeze_double,
 }
 
 backbone_f = getattr(backbone_models, args.model)
@@ -83,7 +83,7 @@ kwargs['batch_size'] = batch_size
 kwargs['class_labels'] = class_labels
 kwargs['train_dir'] = train_dir
 kwargs['val_dir'] = val_dir
-kwargs['img_size'] = (240,320)
+kwargs['img_size'] = (256,384)
 kwargs['mixed_float'] = mixed_float
 kwargs['notebook'] = False
 kwargs['load_model_path'] = load_model_path

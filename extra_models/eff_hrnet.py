@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
-from hrnet import *
+from tensorflow.keras import layers
+from .hrnet import *
 
 class EfficientHRNet_B0(layers.Layer):
     r"""EfficientHRNet_B0
@@ -41,7 +41,7 @@ class EfficientHRNet_B0(layers.Layer):
         effnet=keras.applications.EfficientNetB0(
             include_top=False,
             weights=None,
-            input_tensor=input_shape[1:]
+            input_shape=input_shape[1:]
         )
         self.backbone = keras.Model(
             inputs = effnet.input,
@@ -108,7 +108,7 @@ class EfficientHRNet_B0(layers.Layer):
             br(ft) for br,ft in zip(self.branches, backbone_features)
         ]
         fused_output = self.fusion_layer(branch_outputs)
-        deconv_output = self.deconv_block(fused_output)
+        deconv_output = self.deconv_block(fused_output[0])
         return deconv_output
 
     def get_config(self):

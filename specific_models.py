@@ -41,10 +41,10 @@ def conv3_16(inputs, name=None):
     outputs = layers.Activation('linear', dtype='float32',name=name)(x)
     return outputs 
 
-def conv_squeeze_double(kernel_size, inputs, name=None):
+def conv_squeeze_double(inputs, name=None):
     x = layers.Conv2D(
         1,
-        kernel_size,
+        1,
         padding='same',
         name='final_conv_'+name,
         dtype='float32',
@@ -53,7 +53,7 @@ def conv_squeeze_double(kernel_size, inputs, name=None):
         size=2,
         interpolation='nearest',
         dtype='float32'
-    )
+    )(x)
     x = tf.squeeze(x, axis=-1)
     outputs = layers.Activation('linear', dtype='float32',name=name)(x)
     return outputs
