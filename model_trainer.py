@@ -46,7 +46,7 @@ class ChaserModel(keras.Model):
         self.heatmaps.summary()
         
     def call(self, inputs, training=None):
-        casted = tf.cast(inputs, tf.float32) / 255.0
+        casted = tf.cast(inputs, tf.float32)
         return self.heatmaps(inputs, training=training)
 
 class AugGenerator():
