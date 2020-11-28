@@ -144,6 +144,7 @@ class EfficientHRNet_MV3_Small_1(EfficientHRNet):
                 mobnet.get_layer('expanded_conv/project/BatchNorm').output,
                 mobnet.get_layer('expanded_conv_2/Add').output,
                 mobnet.get_layer('expanded_conv_7/Add').output,
+                mobnet.get_layer('expanded_conv_10/Add').output,
             ]
         )
         return super().build(input_shape)
