@@ -16,6 +16,8 @@ parser.add_argument('-g','--gpu',dest='gpu', default=False,
                     action='store_true')
 parser.add_argument('-mf','--mixedfloat', dest='mixed_float', 
                     action='store_true',default=False)
+parser.add_argument('-ea','--eager', dest='eager', 
+                    action='store_true',default=False)
 args = parser.parse_args()
 
 test_steps = int(args.steps)
@@ -52,11 +54,26 @@ _ = test_model.predict(np.random.random(np.concatenate([[1],image_tensor_shape])
 with tf.profiler.experimental.Profile(logdir):
     for step in range(5):
         with tf.profiler.experimental.Trace('test',step_num=step):
-            _ = test_model.predict(
-                np.random.random(np.concatenate([[1],image_tensor_shape])))
+            if args.eager:
+                _ = test_model(
+                    np.random.random(np.concatenate([[1],image_tensor_shape])),
+                    training=False
+                )
+            else:
+                _ = test_model.predict(
+                    np.random.random(np.concatenate([[1],image_tensor_shape]))
+                )
 print('start testing')
 st = time()
 for _ in trange(test_steps):
-    _ = test_model.predict(np.random.random(np.concatenate([[1],image_tensor_shape])))
+    if args.eager:
+        _ = test_model(
+            np.random.random(np.concatenate([[1],image_tensor_shape])),
+            training=False
+        )
+    else:
+        _ = test_model.predict(
+            np.random.random(np.concatenate([[1],image_tensor_shape]))
+        )
 ed = time()
 print(f'Took {ed-st:.2f}seconds: average {test_steps/(ed-st):.2f}steps/seconds')
