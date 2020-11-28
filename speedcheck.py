@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import mixed_precision
 import backbone_models
 import specific_models
 from model_trainer import ChaserModel
@@ -11,11 +12,27 @@ from time import time
 parser = argparse.ArgumentParser()
 parser.add_argument('-s','--steps', dest='steps')
 parser.add_argument('-n','--name',dest='name')
+parser.add_argument('-g','--gpu',dest='gpu', default=False,
+                    action='store_true')
+parser.add_argument('-mf','--mixedfloat', dest='mixed_float', 
+                    action='store_true',default=False)
 args = parser.parse_args()
 
 test_steps = int(args.steps)
 # Check Inference speed using only cpu
-tf.config.set_visible_devices([],'GPU')
+if args.gpu:
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            print(e)
+    if args.mixed_float:
+        policy = mixed_precision.Policy('mixed_float16')
+        mixed_precision.set_global_policy(policy)
+else:
+    tf.config.set_visible_devices([],'GPU')
 
 image_tensor_shape = [256,384,3]
 
