@@ -3,11 +3,11 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from .hrnet import *
 
-class EfficientHRNet_B0(layers.Layer):
-    r"""EfficientHRNet_B0
-
-    Same model as EfficientHRNet paper
-    Uses EfficientNet-B0 as a backbone model
+class EfficientHRNet(layers.Layer):
+    r"""EfficientHRNet
+    EfficientHRNet Model template
+    Override build and define self.backbone
+    Don't forget to call super().build(input_shape)
     
     Output
     ------
@@ -34,24 +34,12 @@ class EfficientHRNet_B0(layers.Layer):
         super().__init__(**kwargs)
         self.filters = filters
         self.blocks = blocks
+        self.backbone = None
         assert len(filters) == 4, 'Filters should be a list of 4 integers'
         assert len(blocks) == 3, 'Blocks should be a list of 3 integers'
 
     def build(self, input_shape):
-        effnet=keras.applications.EfficientNetB0(
-            include_top=False,
-            weights=None,
-            input_shape=input_shape[1:]
-        )
-        self.backbone = keras.Model(
-            inputs = effnet.input,
-            outputs=[
-                effnet.get_layer('block2b_add').output,
-                effnet.get_layer('block3b_add').output,
-                effnet.get_layer('block5c_add').output,
-                effnet.get_layer('block7a_project_bn').output,
-            ]
-        )
+        assert self.backbone, 'self.backbone should be defined'
         self.branches = []
         self.branch1_layers = []
         for i,bn in enumerate(self.blocks):
@@ -116,3 +104,46 @@ class EfficientHRNet_B0(layers.Layer):
         config['filters'] = self.filters
         config['blocks'] = self.blocks
         return config
+
+class EfficientHRNet_B0(EfficientHRNet):
+    """EfficientHRNet_B0
+    Uses Efficientnet_B0 as a backbone model
+    """
+    def build(self, input_shape):
+        effnet=keras.applications.EfficientNetB0(
+            include_top=False,
+            weights=None,
+            input_shape=input_shape[1:]
+        )
+        self.backbone = keras.Model(
+            inputs = effnet.input,
+            outputs=[
+                effnet.get_layer('block2b_add').output,
+                effnet.get_layer('block3b_add').output,
+                effnet.get_layer('block5c_add').output,
+                effnet.get_layer('block7a_project_bn').output,
+            ]
+        )
+        return super().build(input_shape)
+
+class EfficientHRNet_MV3_Small_1(EfficientHRNet):
+    """EfficientHRNet_MV3_Small
+    Uses MobileNetV3Large as a backbone model
+    alpha=1
+    """
+    def build(self, input_shape):
+        mobnet = keras.applications.MobileNetV3Small(
+            input_shape=input_shape[1:],
+            weights=None,
+            include_top=False,
+            alpha=1.0
+        )
+        self.backbone = keras.Model(
+            inputs = mobnet.input,
+            outputs=[
+                mobnet.get_layer('expanded_conv/project/BatchNorm').output,
+                mobnet.get_layer('expanded_conv_2/Add').output,
+                mobnet.get_layer('expanded_conv_7/Add').output,
+            ]
+        )
+        return super().build(input_shape)

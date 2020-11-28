@@ -38,7 +38,7 @@ else:
 
 image_tensor_shape = [256,384,3]
 
-backbone_f = backbone_models.ehr_112_11
+backbone_f = backbone_models.mobv3_small
 specific_fs = {
     'nose' : specific_models.conv_squeeze_double
 }
