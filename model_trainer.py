@@ -102,7 +102,7 @@ class AugGenerator():
                 scale_limit=0.0,
                 border_mode=cv2.BORDER_REFLECT_101,
                 p=0.5
-            )
+            ),
             A.Resize(img_size[0], img_size[1]),
             # A.Cutout(8,img_size[0]//12,img_size[1]//12)
         ],
