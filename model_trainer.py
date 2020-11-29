@@ -203,38 +203,50 @@ def create_train_dataset(
         img_size, 
         batch_size, 
         buffer_size=1000,
+        parallel=8,
         val_data=False):
     """
     Note: img_size = (HEIGHT,WIDTH)
     """
     autotune = tf.data.experimental.AUTOTUNE
     if val_data:
-        generator = ValGenerator(
-            data_dir,
-            class_labels,
-            img_size,
-        )
+        generator = ValGenerator
     else:
-        generator = AugGenerator(
-            data_dir,
-            class_labels,
-            img_size,
-        )
+        generator = AugGenerator
     output_dict = {}
     output_types = {}
     for cname in class_labels:
         output_dict[cname] = tf.TensorShape([img_size[0],img_size[1]])
         output_types[cname] = tf.float32
     
-
-    dataset = tf.data.Dataset.from_generator(
-        generator,
-        output_types=(tf.uint8, output_types),
-        output_shapes=(
-            tf.TensorShape([img_size[0],img_size[1],3]), 
-            output_dict,
+    dummy_ds = tf.data.Dataset.range(parallel)
+    dataset = dummy_ds.interleave(
+        lambda x: tf.data.Dataset.from_generator(
+            lambda x: generator(
+                data_dir,
+                class_labels,
+                img_size,
+            ),
+            output_types=(tf.uint8, output_types),
+            output_shapes=(
+                tf.TensorShape([img_size[0],img_size[1],3]),
+                output_dict,
+            ),
+            args=(x,)
         ),
+        cycle_length=parallel,
+        block_length=1,
+        num_parallel_calls=parallel,
     )
+
+    # dataset = tf.data.Dataset.from_generator(
+    #     generator,
+    #     output_types=(tf.uint8, output_types),
+    #     output_shapes=(
+    #         tf.TensorShape([img_size[0],img_size[1],3]), 
+    #         output_dict,
+    #     ),
+    # )
     dataset = dataset.shuffle(buffer_size)
     dataset = dataset.batch(batch_size, drop_remainder=True)
     dataset = dataset.prefetch(autotune)
