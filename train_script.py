@@ -57,7 +57,7 @@ train_dir = 'data/block/save'
 val_dir = 'data/block/val'
 
 specific_fs={
-    'block' : specific_models.conv_squeeze_double,
+    'nose' : specific_models.conv_squeeze_double,
 }
 
 backbone_f = getattr(backbone_models, args.model)
@@ -69,7 +69,7 @@ batch_size = int(args.batch)
 mixed_float = args.mixed_float
 load_model_path = args.load
 profile = args.profile
-class_labels = ['block']
+class_labels = ['nose']
 
 kwargs = {}
 kwargs['backbone_f'] = backbone_f
