@@ -60,8 +60,15 @@ original_model.fit(
     callbacks=[lr_callback],
     verbose=1,
 )
+def representative_data_gen():
+    for datum in dummy_ds.take(1000):
+        yield [datum[0]]
+
 
 converter = tf.lite.TFLiteConverter.from_keras_model(original_model)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+converter.representative_dataset = representative_data_gen
+
 tflite_model = converter.convert()
 
 with open(f'tflite_models/{name}.tflite','wb') as f:
