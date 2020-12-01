@@ -131,3 +131,4 @@ savedmodels/
 results/
 analyze/
 log_backup/
+tflite_models/
