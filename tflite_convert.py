@@ -33,7 +33,7 @@ class_labels = ['head']
 img_size = (256,384)
 batch_size = 1
 
-inputs = keras.
+inputs = keras.Input((img_size[0],img_size[1],3))
 original_model = ChaserModel(inputs, backbone_f, specific_fs)
 original_model.load_weights(load_model_path)
 print('loaded from : ' + load_model_path)
