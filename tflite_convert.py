@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 import specific_models
 import backbone_models
-from model_trainer import ChaserModel
+from model_trainer import ChaserModel, create_train_dataset
 import model_lr
 
 parser = argparse.ArgumentParser()
@@ -35,12 +35,12 @@ batch_size = 1
 
 inputs = keras.Input((img_size[0],img_size[1],3))
 original_model = ChaserModel(inputs, backbone_f, specific_fs)
-original_model.load_weights(load_model_path)
-print('loaded from : ' + load_model_path)
 original_model.compile(
     optimizer='adam',
     loss='mse',
-),
+)
+original_model.load_weights(load_model_path)
+print('loaded from : ' + load_model_path)
 
 lr_f = model_lr.low_lr
 lr_callback = keras.callbacks.LearningRateScheduler(lr_f, verbose=1)
