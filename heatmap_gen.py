@@ -10,6 +10,7 @@ import backbone_models
 import specific_models
 import os
 import argparse
+import tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-bb','--backbone', dest='backbone')
@@ -97,11 +98,13 @@ for v_i in trange(len(vid_names)):
         else:
             break
     batch_num = len(original_frames) // batch_size
+    last_rc = None
     for i in trange(batch_num, leave=False):
         output = test_model.predict_on_batch(np.array(small_frames[i*batch_size:(i+1)*batch_size]))
         # Only nose
         nose_hms = output['nose']
         rr, cc = np.unravel_index(nose_hms.reshape((nose_hms.shape[0],-1)).argmax(axis=1),nose_hms.shape[1:])
+        rr, cc, last_rc = tools.gravity(rr,cc,last_rc)
         nose_max_hms = gaussian_heatmap_batch(rr,cc, model_hw)
         for nose_max_hm, original_frame in zip(nose_max_hms, original_frames[i*batch_size:(i+1)*batch_size]):
             large_hm = cv2.resize(nose_max_hm, dsize=original_wh)
