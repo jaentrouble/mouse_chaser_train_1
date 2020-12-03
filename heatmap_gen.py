@@ -64,13 +64,12 @@ vid_dir = Path(args.video)
 model_path = Path(args.load)
 bb_model = getattr(backbone_models, args.backbone)
 sp_model = {
-    'nose' : specific_models.conv3_16,
-    'tail' : specific_models.conv3_16,
+    'head' : specific_models.conv_squeeze_double,
 }
-test_model = ChaserModel(tf.keras.Input((240,320,3)),bb_model,sp_model)
+test_model = ChaserModel(tf.keras.Input((256,384,3)),bb_model,sp_model)
 test_model.load_weights(str(model_path))
 original_wh = (640, 480)
-model_wh = (320, 240)
+model_wh = (384, 256)
 batch_size = int(args.batch)
 original_hw = (original_wh[1],original_wh[0])
 model_hw = (model_wh[1], model_wh[0])
@@ -101,8 +100,8 @@ for v_i in trange(len(vid_names)):
     last_rc = None
     for i in trange(batch_num, leave=False):
         output = test_model.predict_on_batch(np.array(small_frames[i*batch_size:(i+1)*batch_size]))
-        # Only nose
-        nose_hms = output['nose']
+        # Only head
+        nose_hms = output['head']
         rr, cc = np.unravel_index(nose_hms.reshape((nose_hms.shape[0],-1)).argmax(axis=1),nose_hms.shape[1:])
         rr, cc, last_rc = tools.gravity(rr,cc,last_rc)
         nose_max_hms = gaussian_heatmap_batch(rr,cc, model_hw)
