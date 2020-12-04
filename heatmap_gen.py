@@ -77,6 +77,8 @@ heatmap = np.zeros(original_hw, dtype=np.float)
 vid_names = os.listdir(vid_dir/'vids')
 vid_names.sort()
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+if not (vid_dir/'output').exists():
+    (vid_dir/'output').mkdir()
 writer = cv2.VideoWriter(
     str(vid_dir/'output'/'heatmap_vid.mp4'),
     fourcc,
