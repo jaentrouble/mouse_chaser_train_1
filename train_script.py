@@ -53,8 +53,8 @@ if args.mem_limit:
             print(e)
 
 
-train_dir = 'data/block/save'
-val_dir = 'data/block/val'
+train_dir = 'data/mixed/save'
+val_dir = 'data/mixed/val'
 
 specific_fs={
     'head' : specific_models.conv_squeeze_double,
