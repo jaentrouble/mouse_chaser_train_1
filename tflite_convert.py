@@ -10,6 +10,8 @@ import model_lr
 parser = argparse.ArgumentParser()
 parser.add_argument('-m','--model', dest='model')
 parser.add_argument('-n','--name', dest='name')
+parser.add_argument('-q','--quantize', dest='quan',
+                    action='store_true', default=False)
 parser.add_argument('--load',dest='load')
 args = parser.parse_args()
 
@@ -21,7 +23,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-train_dir = 'data/block/save'
+train_dir = 'data/mixed/save'
 
 backbone_f = getattr(backbone_models, args.model)
 specific_fs={
@@ -50,7 +52,8 @@ dummy_ds = create_train_dataset(
     class_labels,
     img_size,
     batch_size,
-    buffer_size=1000
+    buffer_size=1000,
+    val_data=True
 )
 # To draw graph
 original_model.fit(
@@ -61,13 +64,14 @@ original_model.fit(
     verbose=1,
 )
 def representative_data_gen():
-    for datum in dummy_ds.take(1000):
+    for datum in dummy_ds.take(3000):
         yield [datum[0]]
 
 
 converter = tf.lite.TFLiteConverter.from_keras_model(original_model)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.representative_dataset = representative_data_gen
+if args.quan:
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_data_gen
 
 tflite_model = converter.convert()
 
