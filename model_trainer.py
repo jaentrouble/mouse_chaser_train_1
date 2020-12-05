@@ -86,14 +86,14 @@ class AugGenerator():
         self.n = len(self.raw_data)
         self.output_size = img_size
         self.aug = A.Compose([
-            # A.OneOf([
-            #     A.RandomGamma((40,200),p=1),
-            #     A.RandomBrightness(limit=0.5, p=1),
-            #     A.RandomContrast(limit=0.5,p=1),
-            #     A.RGBShift(40,40,40,p=1),
-            #     A.Downscale(scale_min=0.25,scale_max=0.5,p=1),
-            #     A.ChannelShuffle(p=1),
-            # ], p=0.8),
+            A.OneOf([
+                A.RandomGamma((40,200),p=1),
+                A.RandomBrightness(limit=0.5, p=1),
+                A.RandomContrast(limit=0.5,p=1),
+                A.RGBShift(40,40,40,p=1),
+                A.Downscale(scale_min=0.25,scale_max=0.5,p=1),
+                A.ChannelShuffle(p=1),
+            ], p=0.8),
             # A.InvertImg(p=0.5),
             A.VerticalFlip(p=0.5),
             A.HorizontalFlip(p=0.5),
