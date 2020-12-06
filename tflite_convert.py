@@ -32,7 +32,7 @@ specific_fs={
 name = args.name
 load_model_path = args.load
 class_labels = ['head']
-img_size = (256,384)
+img_size = (224,288)
 batch_size = 1
 
 inputs = keras.Input((img_size[0],img_size[1],3))
