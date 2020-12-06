@@ -127,9 +127,9 @@ class EfficientHRNet_B0(EfficientHRNet):
         return super().build(input_shape)
 
 class EfficientHRNet_MV3_Small_1(EfficientHRNet):
-    """EfficientHRNet_MV3_Small
+    """EfficientHRNet_MV3_Small_1
     Uses MobileNetV3Large as a backbone model
-    alpha=1
+    alpha=1.0
     """
     def build(self, input_shape):
         mobnet = keras.applications.MobileNetV3Small(
@@ -137,6 +137,29 @@ class EfficientHRNet_MV3_Small_1(EfficientHRNet):
             weights=None,
             include_top=False,
             alpha=1.0
+        )
+        self.backbone = keras.Model(
+            inputs = mobnet.input,
+            outputs=[
+                mobnet.get_layer('expanded_conv/project/BatchNorm').output,
+                mobnet.get_layer('expanded_conv_2/Add').output,
+                mobnet.get_layer('expanded_conv_7/Add').output,
+                mobnet.get_layer('expanded_conv_10/Add').output,
+            ]
+        )
+        return super().build(input_shape)
+
+class EfficientHRNet_MV3_Small_05(EfficientHRNet):
+    """EfficientHRNet_MV3_Small_05
+    Uses MobileNetV3Large as a backbone model
+    alpha=0.5
+    """
+    def build(self, input_shape):
+        mobnet = keras.applications.MobileNetV3Small(
+            input_shape=input_shape[1:],
+            weights=None,
+            include_top=False,
+            alpha=0.5
         )
         self.backbone = keras.Model(
             inputs = mobnet.input,
