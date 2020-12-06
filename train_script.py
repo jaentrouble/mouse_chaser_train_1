@@ -82,7 +82,8 @@ kwargs['batch_size'] = batch_size
 kwargs['class_labels'] = class_labels
 kwargs['train_dir'] = train_dir
 kwargs['val_dir'] = val_dir
-kwargs['img_size'] = (256,384)
+# (Height, Width)
+kwargs['img_size'] = (224,288)
 kwargs['mixed_float'] = mixed_float
 kwargs['notebook'] = False
 kwargs['load_model_path'] = load_model_path
