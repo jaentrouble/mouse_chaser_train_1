@@ -36,9 +36,9 @@ if args.gpu:
 else:
     tf.config.set_visible_devices([],'GPU')
 
-image_tensor_shape = [256,384,3]
+image_tensor_shape = [224,288,3]
 
-backbone_f = backbone_models.mobv3_small
+backbone_f = backbone_models.mobv3_small_07
 specific_fs = {
     'nose' : specific_models.conv_squeeze_double
 }

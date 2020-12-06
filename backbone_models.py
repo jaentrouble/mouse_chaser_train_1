@@ -45,17 +45,27 @@ def ehr_112_11(inputs):
     return features
 
 def mobv3_small(inputs):
-    features = clayers.EfficientHRNet_MV3_Small_1(
+    features = clayers.EfficientHRNet_MV3_Small(
         filters=[12,22,44,86] ,
         blocks =[2,2,4],      # Model from the Paper has 2x blocks
         name = 'EffHRNet'
     )(inputs)
     return features
 
-def mobv3_small_05(inputs):
-    features = clayers.EfficientHRNet_MV3_Small_05(
-        filters=[12,22,44,86] ,
-        blocks =[2,2,4],      # Model from the Paper has 2x blocks
-        name = 'EffHRNet'
+def mobv3_small_08(inputs):
+    features = clayers.EfficientHRNet_MV3_Small(
+        filters=[10,18,35,69] ,
+        blocks =[1,2,4],      # Model from the Paper has 2x blocks
+        name = 'EffHRNet',
+        alpha=0.8,
+    )(inputs)
+    return features
+
+def mobv3_small_07(inputs):
+    features = clayers.EfficientHRNet_MV3_Small(
+        filters=[8,14,28,55] ,
+        blocks =[1,1,4],      # Model from the Paper has 2x blocks
+        name = 'EffHRNet',
+        alpha=0.7,
     )(inputs)
     return features

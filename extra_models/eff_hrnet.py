@@ -126,40 +126,39 @@ class EfficientHRNet_B0(EfficientHRNet):
         )
         return super().build(input_shape)
 
-class EfficientHRNet_MV3_Small_1(EfficientHRNet):
-    """EfficientHRNet_MV3_Small_1
+class EfficientHRNet_MV3_Small(EfficientHRNet):
+    """EfficientHRNet_MV3_Small
     Uses MobileNetV3Large as a backbone model
-    alpha=1.0
     """
-    def build(self, input_shape):
-        mobnet = keras.applications.MobileNetV3Small(
-            input_shape=input_shape[1:],
-            weights=None,
-            include_top=False,
-            alpha=1.0
-        )
-        self.backbone = keras.Model(
-            inputs = mobnet.input,
-            outputs=[
-                mobnet.get_layer('expanded_conv/project/BatchNorm').output,
-                mobnet.get_layer('expanded_conv_2/Add').output,
-                mobnet.get_layer('expanded_conv_7/Add').output,
-                mobnet.get_layer('expanded_conv_10/Add').output,
-            ]
-        )
-        return super().build(input_shape)
+    def __init__(
+        self,
+        filters:list,
+        blocks:list,
+        alpha=1.0,
+        **kwargs,
+    ):
+        """
+        Parameters
+        ----------
+        filters : list of 4 integers
+            Number of filters (Wb in paper) per branch.
+            Needs to be 4 integers.
+        blocks : list of 3 integers
+            Number of per each stage. (Refer to the paper)
+            Note: Here, it refers to Basic block number, 
+                  which has 2 conv layers
+        alpha : float
+            MobileNetV3Small's width parameter
+        """
+        super().__init__(filters,blocks,**kwargs)
+        self._alpha = alpha
 
-class EfficientHRNet_MV3_Small_05(EfficientHRNet):
-    """EfficientHRNet_MV3_Small_05
-    Uses MobileNetV3Large as a backbone model
-    alpha=0.5
-    """
     def build(self, input_shape):
         mobnet = keras.applications.MobileNetV3Small(
             input_shape=input_shape[1:],
             weights=None,
             include_top=False,
-            alpha=0.5
+            alpha=self._alpha
         )
         self.backbone = keras.Model(
             inputs = mobnet.input,
