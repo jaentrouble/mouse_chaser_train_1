@@ -119,6 +119,16 @@ def lr_step8_3(epoch, lr):
             lr = 2e-7/((epoch-20)/5)
     return lr
 
+def lr_step9(epoch, lr):
+    if epoch <= 10:
+        lr = 5e-3
+    elif epoch <= 20 :
+        lr = 5e-4
+    else :
+        if epoch % 5 == 0 :
+            lr = 1e-4/((epoch-20)/5)
+    return lr
+
 def lr_mul_inv(epoch, lr):
     return 0.01 / (epoch+1)
 
