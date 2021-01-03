@@ -489,7 +489,7 @@ def run_training(
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         def representative_data_gen():
             for datum in val_ds.take(500):
-                yield [datum[0:1].astype(np.float32)]
+                yield [datum[0][0:1].astype(np.float32)]
         converter.representative_dataset = representative_data_gen
 
         tflite_model = converter.convert()
