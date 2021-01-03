@@ -27,6 +27,8 @@ parser.add_argument('-ml','--memorylimit', dest='mem_limit',
                     default=False)
 parser.add_argument('-pf','--profile', dest='profile',
                     action='store_true',default=False)
+parser.add_argument('-q', '--quantize', dest='q_aware',default=False,
+                    action='store_true')
 parser.add_argument('--load',dest='load', default=False)
 args = parser.parse_args()
 
@@ -88,5 +90,6 @@ kwargs['mixed_float'] = mixed_float
 kwargs['notebook'] = False
 kwargs['load_model_path'] = load_model_path
 kwargs['profile'] = profile
+kwargs['q_aware'] = args.q_aware
 
 run_training(**kwargs)
