@@ -391,10 +391,10 @@ def run_training(
         print('loaded from : ' + load_model_path)
 
     if q_aware:
-        quan_layer=[
+        quan_layer=(
             layers.Conv2D,
             layers.BatchNormalization,
-        ]
+        )
         def apply_q(layer):
             if isinstance(layer, quan_layer):
                 return tfmot.quantization.keras.quantize_annotate_layer(layer)
