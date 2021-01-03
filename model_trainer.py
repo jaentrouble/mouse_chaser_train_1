@@ -487,9 +487,8 @@ def run_training(
     if q_aware:
         converter = tf.lite.TFLiteConverter.from_keras_model(mymodel)
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        dummy_ds = val_ds.batch(1)
         def representative_data_gen():
-            for datum in dummy_ds.take(500):
+            for datum in val_ds.take(500):
                 print(datum[0].shape)
                 yield [datum[0]]
         converter.representative_dataset = representative_data_gen
