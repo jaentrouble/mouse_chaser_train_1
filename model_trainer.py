@@ -490,6 +490,7 @@ def run_training(
         dummy_ds = val_ds.batch(1)
         def representative_data_gen():
             for datum in dummy_ds.take(500):
+                print(datum[0].shape)
                 yield [datum[0]]
         converter.representative_dataset = representative_data_gen
 
