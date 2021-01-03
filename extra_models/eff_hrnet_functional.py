@@ -159,6 +159,56 @@ def efficient_hrnet_b0(
     )
     return outputs
 
+def efficient_hrnet_mv3_small(
+    inputs,
+    filters:list,
+    blocks:list,
+    alpha=1.0,
+):
+    """EfficientHRNet_MV3_Small
+    Uses MobileNetV3Large as a backbone model
+
+    Arguments
+    ---------
+    inputs : keras.Input or Tensor
+        Input tensor
+        (N,H,W,C) expected
+    filters : list of 4 integers
+        Number of filters (Wb in paper) per branch.
+        Needs to be 4 integers.
+    blocks : list of 3 integers
+        Number of per each stage. (Refer to the paper)
+        Note: Here, it refers to Basic block number, 
+                which has 2 conv layers
+    alpha : float
+        MobileNetV3Small's width parameter
+
+    Output
+    ------
+    Output Shape:
+        (N,H/2,W/2,Wb1)
+    """
+    backbone = keras.applications.MobileNetV3Small(
+        include_top=False,
+        weights=None,
+        input_tensor=inputs,
+        alpha=alpha,
+    )
+    backbone_outputs = [
+        backbone.get_layer('expanded_conv/project/BatchNorm').output,
+        backbone.get_layer('expanded_conv_2/Add').output,
+        backbone.get_layer('expanded_conv_7/Add').output,
+        backbone.get_layer('expanded_conv_10/Add').output,
+    ]
+    outputs = branches(
+        backbone_outputs,
+        filters,
+        blocks,
+        name='branches',
+    )
+    return outputs
+
+
 if __name__ == '__main__':
     inputs = keras.Input((320,320,3))
     outputs = efficient_hrnet_b0(
