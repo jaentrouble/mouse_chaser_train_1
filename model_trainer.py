@@ -391,18 +391,18 @@ def run_training(
         print('loaded from : ' + load_model_path)
 
     if q_aware:
-        quan_layer=(
+        quan_layers=(
             layers.Conv2D,
-            layers.BatchNormalization,
         )
-        def apply_q(layer):
-            if isinstance(layer, quan_layer):
+        def apply_q_to_conv(layer):
+            if isinstance(layer, quan_layers):
                 return tfmot.quantization.keras.quantize_annotate_layer(layer)
             return layer
-        mymodel = keras.models.clone_model(
+        annotated_model = keras.models.clone_model(
             mymodel,
             clone_function=apply_q,
         )
+        mymodel = tfmot.quantization.keras.quantize_apply(annotated_model)
         print('*'*50)
         print('Quantize-aware')
         print('*'*50)
