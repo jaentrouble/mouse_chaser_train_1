@@ -379,23 +379,28 @@ def run_training(
     st = time.time()
 
     mymodel = ChaserModel(img_size, backbone_f, specific_fs)
-
-    if load_model_path:
-        mymodel.load_weights(load_model_path)
-        print('loaded from : ' + load_model_path)
-        
-    if q_aware:
-        mymodel=tfmot.quantization.keras.quantize_model(mymodel)
-        print('*'*50)
-        print('Quantize-aware')
-        print('*'*50)
-
     loss = keras.losses.MeanSquaredError()
     mymodel.compile(
         optimizer='adam',
         loss=loss,
         metrics=[MaxPointDistL2(name='mpd'),]
     )
+
+    if load_model_path:
+        mymodel.load_weights(load_model_path)
+        print('loaded from : ' + load_model_path)
+
+    if q_aware:
+        mymodel=tfmot.quantization.keras.quantize_model(mymodel)
+        print('*'*50)
+        print('Quantize-aware')
+        print('*'*50)
+        loss = keras.losses.MeanSquaredError()
+        mymodel.compile(
+            optimizer='adam',
+            loss=loss,
+            metrics=[MaxPointDistL2(name='mpd'),]
+        )
     mymodel.summary()
 
     logdir = 'logs/fit/' + name
