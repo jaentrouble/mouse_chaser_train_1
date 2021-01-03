@@ -493,10 +493,10 @@ def run_training(
         )
         converter = tf.lite.TFLiteConverter.from_concrete_functions([qfunc])
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        def representative_data_gen():
-            for datum in val_ds.take(500):
-                yield [tf.cast(datum[0][0:1],tf.float32)]
-        converter.representative_dataset = representative_data_gen
+        # def representative_data_gen():
+        #     for datum in val_ds.take(500):
+        #         yield [tf.cast(datum[0][0:1],tf.float32)]
+        # converter.representative_dataset = representative_data_gen
 
         tflite_model = converter.convert()
         save_path = f'tflite_models/{name}_quan.tflite'
