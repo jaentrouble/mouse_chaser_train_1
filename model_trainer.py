@@ -385,7 +385,7 @@ def run_training(
         loss=loss,
         metrics=[MaxPointDistL2(name='mpd'),]
     )
-
+    test = keras.models.clone_model(mymodel)
     if load_model_path:
         mymodel.load_weights(load_model_path)
         print('loaded from : ' + load_model_path)
