@@ -75,7 +75,6 @@ def mobv3_small_07(inputs):
         inputs=inputs,
         filters=[8,14,28,55] ,
         blocks =[1,1,4],      # Model from the Paper has 2x blocks
-        name = 'EffHRNet',
         alpha=0.7,
     )
     return features
