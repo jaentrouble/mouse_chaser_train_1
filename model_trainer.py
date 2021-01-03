@@ -37,6 +37,7 @@ def ChaserModel(
         outputs[out_name]=(sf(backbone_out, out_name))
     chaser_model = keras.Model(inputs=inputs, outputs=outputs,
                                 name='chaser_model')
+    chaser_model.summary()
     return chaser_model
 
         
