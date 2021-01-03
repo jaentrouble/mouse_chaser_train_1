@@ -480,6 +480,15 @@ def run_training(
         validation_steps=100,
     )
 
+    if q_aware:
+        converter = tf.lite.TFLiteConverter.from_keras_model(mymodel)
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        tflite_model = converter.convert()
+        save_path = f'tflite_models/{name}_quan.tflite'
+        with open(save_path,'wb') as f:
+            f.write(tflite_model)
+        print('Saved tflite model at : '+save_path)
+
 
     delta = time.time()-st
     hours, remain = divmod(delta, 3600)
