@@ -377,7 +377,7 @@ def run_training(
     
     st = time.time()
 
-    mymodel = ChaserModel(image_size, backbone_f, specific_fs)
+    mymodel = ChaserModel(img_size, backbone_f, specific_fs)
     if load_model_path:
         mymodel.load_weights(load_model_path)
         print('loaded from : ' + load_model_path)
