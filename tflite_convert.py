@@ -35,8 +35,7 @@ class_labels = ['head']
 img_size = (224,288)
 batch_size = 1
 
-inputs = keras.Input((img_size[0],img_size[1],3))
-original_model = ChaserModel(inputs, backbone_f, specific_fs)
+original_model = ChaserModel(img_size, backbone_f, specific_fs)
 original_model.compile(
     optimizer='adam',
     loss='mse',
