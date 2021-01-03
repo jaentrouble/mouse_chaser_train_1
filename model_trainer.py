@@ -489,7 +489,6 @@ def run_training(
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         def representative_data_gen():
             for datum in val_ds.take(500):
-                print(datum[0].shape)
                 yield [datum[0]]
         converter.representative_dataset = representative_data_gen
 
