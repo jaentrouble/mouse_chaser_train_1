@@ -400,7 +400,7 @@ def run_training(
             return layer
         annotated_model = keras.models.clone_model(
             mymodel,
-            clone_function=apply_q,
+            clone_function=apply_q_to_conv,
         )
         mymodel = tfmot.quantization.keras.quantize_apply(annotated_model)
         print('*'*50)
