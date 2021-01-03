@@ -30,6 +30,7 @@ parser.add_argument('-pf','--profile', dest='profile',
 parser.add_argument('-q', '--quantize', dest='q_aware',default=False,
                     action='store_true')
 parser.add_argument('--load',dest='load', default=False)
+parser.add_argument('--qload',dest='qload', default=False)
 args = parser.parse_args()
 
 if args.mem_growth:
@@ -91,5 +92,6 @@ kwargs['notebook'] = False
 kwargs['load_model_path'] = load_model_path
 kwargs['profile'] = profile
 kwargs['q_aware'] = args.q_aware
+kwargs['qload'] = args.qload
 
 run_training(**kwargs)

@@ -366,7 +366,8 @@ def run_training(
         notebook = True,
         load_model_path = None,
         profile = False,
-        q_aware=False
+        q_aware=False,
+        qload=False
     ):
     """
     img_size:
@@ -413,6 +414,9 @@ def run_training(
             loss=loss,
             metrics=[MaxPointDistL2(name='mpd'),]
         )
+        if qload:
+            mymodel.load_weights(qload)
+            print('loaded from : '+qload)
     mymodel.summary()
 
     logdir = 'logs/fit/' + name
@@ -486,7 +490,7 @@ def run_training(
         dummy_ds = val_ds.batch(1)
         def representative_data_gen():
             for datum in dummy_ds.take(500):
-                yield [datum[0]]
+                yield datum[0]
         converter.representative_dataset = representative_data_gen
 
         tflite_model = converter.convert()
