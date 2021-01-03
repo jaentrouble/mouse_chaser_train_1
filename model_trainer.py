@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import mixed_precision
+from tensorflow.keras import mixed_precision, layers
 import time
 from custom_tqdm import TqdmNotebookCallback
 from tqdm.keras import TqdmCallback
@@ -385,13 +385,24 @@ def run_training(
         loss=loss,
         metrics=[MaxPointDistL2(name='mpd'),]
     )
-    test = keras.models.clone_model(mymodel)
+
     if load_model_path:
         mymodel.load_weights(load_model_path)
         print('loaded from : ' + load_model_path)
 
     if q_aware:
-        mymodel=tfmot.quantization.keras.quantize_model(mymodel)
+        quan_layer=[
+            layers.Conv2D,
+            layers.BatchNormalization,
+        ]
+        def apply_q(layer):
+            if isinstance(layer, quan_layer):
+                return tfmot.quantization.keras.quantize_annotate_layer(layer)
+            return layer
+        mymodel = keras.models.clone_model(
+            mymodel,
+            clone_function=apply_q,
+        )
         print('*'*50)
         print('Quantize-aware')
         print('*'*50)
@@ -476,22 +487,43 @@ def run_training(
 
 
 if __name__ == '__main__':
-    import os
-    data_dir = 'data/save'
+    # import os
+    # data_dir = 'data/save'
 
-    ds = create_train_dataset(data_dir, ['nose','tail'], (480,640),1,200)
-    sample = ds.take(5).as_numpy_iterator()
-    fig = plt.figure(figsize=(10,10))
-    for i, s in enumerate(sample):
-        ax = fig.add_subplot(5,3,3*i+1)
-        img = s[0][0]
-        ax.imshow(img)
-        ax = fig.add_subplot(5,3,3*i+2)
-        nose = s[1]['nose'][0]
-        ax.imshow(img,alpha=0.5)
-        ax.imshow(nose,alpha=0.5)
-        ax = fig.add_subplot(5,3,3*i+3)
-        tail = s[1]['tail'][0]
-        ax.imshow(img,alpha=0.5)
-        ax.imshow(tail,alpha=0.5)
-    plt.show()
+    # ds = create_train_dataset(data_dir, ['nose','tail'], (480,640),1,200)
+    # sample = ds.take(5).as_numpy_iterator()
+    # fig = plt.figure(figsize=(10,10))
+    # for i, s in enumerate(sample):
+    #     ax = fig.add_subplot(5,3,3*i+1)
+    #     img = s[0][0]
+    #     ax.imshow(img)
+    #     ax = fig.add_subplot(5,3,3*i+2)
+    #     nose = s[1]['nose'][0]
+    #     ax.imshow(img,alpha=0.5)
+    #     ax.imshow(nose,alpha=0.5)
+    #     ax = fig.add_subplot(5,3,3*i+3)
+    #     tail = s[1]['tail'][0]
+    #     ax.imshow(img,alpha=0.5)
+    #     ax.imshow(tail,alpha=0.5)
+    # plt.show()
+    import backbone_models
+    import specific_models
+    img_size=(224,288)
+    backbone_f = backbone_models.mobv3_small_07
+    specific_fs={
+        'head' : specific_models.conv_squeeze_double,
+    }
+    mymodel = ChaserModel(img_size, backbone_f, specific_fs)
+    quan_layer=(
+        layers.Conv2D,
+        layers.BatchNormalization,
+    )
+    def apply_q(layer):
+        if isinstance(layer, quan_layer):
+            return tfmot.quantization.keras.quantize_annotate_layer(layer)
+        return layer
+    qmodel = keras.models.clone_model(
+        mymodel,
+        clone_function=apply_q,
+    )
+    qmodel.summary()
