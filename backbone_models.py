@@ -61,16 +61,16 @@ def mobv3_small_08(inputs):
     )(inputs)
     return features
 
-def mobv3_small_07(inputs):
-    features = clayers.EfficientHRNet_MV3_Small(
-        filters=[8,14,28,55] ,
-        blocks =[1,1,4],      # Model from the Paper has 2x blocks
-        name = 'EffHRNet',
-        alpha=0.7,
-    )(inputs)
-    return features
+# def mobv3_small_07(inputs):
+#     features = clayers.EfficientHRNet_MV3_Small(
+#         filters=[8,14,28,55] ,
+#         blocks =[1,1,4],      # Model from the Paper has 2x blocks
+#         name = 'EffHRNet',
+#         alpha=0.7,
+#     )(inputs)
+#     return features
 
-def mobv3_small_07_f(inputs):
+def mobv3_small_07(inputs):
     features = clayers.efficient_hrnet_mv3_small(
         inputs=inputs,
         filters=[8,14,28,55] ,

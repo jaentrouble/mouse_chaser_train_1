@@ -15,40 +15,31 @@ from pathlib import Path
 import os
 import pickle
 
-class ChaserModel(keras.Model):
+def ChaserModel(
+    image_size,
+    backbone_f,
+    specific_fs,
+):
     """ChaserModel
     Gets an image and returns a heatmap
 
-    Input
-    -----
-    input : tf.Tensor
-        image tensor. Expects it to be tf.uint8 i.e. raw image
-    
-    Output
-    ------
-    heatmaps : dict of heatmaps
-        {'name' : tf.Tensor}
+    Arguments
+    ---------
+        image_size : tuple
+            (Height,Width)
+        backbone_f : function used universally across multiple outputs
+        specific_fs : dict {'name' : model_function}
     """
-    def __init__(self, inputs, backbone_f, specific_fs):
-        """
-        Arguments
-        ---------
-            inputs : keras.Input
-            backbone_f : function used universally across multiple outputs
-            specific_fs : dict {'name' : model_function}
-        """
-        super().__init__()
-        backbone_out = backbone_f(inputs)
-        outputs = {}
-        for out_name, sf in specific_fs.items():
-            outputs[out_name]=(sf(backbone_out, out_name))
-        self.heatmaps = keras.Model(inputs=inputs, outputs=outputs)
-        self.heatmaps.summary()
-        
-    def call(self, inputs, training=None):
-        casted = tf.cast(inputs, tf.float32)
-        return self.heatmaps(inputs, training=training)
+    inputs = keras.Input([image_size[0],image_size[1],3])
+    backbone_out = backbone_f(inputs)
+    outputs = {}
+    for out_name, sf in specific_fs.items():
+        outputs[out_name]=(sf(backbone_out, out_name))
+    chaser_model = keras.Model(inputs=inputs, outputs=outputs,
+                                name='chaser_model')
+    return chaser_model
 
+        
 class AugGenerator():
     """An iterable generator that makes augmented mouserec data
 
@@ -385,8 +376,7 @@ def run_training(
     
     st = time.time()
 
-    inputs = keras.Input((img_size[0],img_size[1],3))
-    mymodel = ChaserModel(inputs, backbone_f, specific_fs)
+    mymodel = ChaserModel(image_size, backbone_f, specific_fs)
     if load_model_path:
         mymodel.load_weights(load_model_path)
         print('loaded from : ' + load_model_path)
