@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow import nn
-from functional_layers import *
+from .functional_layers import *
 
 
 """
