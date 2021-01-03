@@ -485,7 +485,13 @@ def run_training(
     )
 
     if q_aware:
-        converter = tf.lite.TFLiteConverter.from_keras_model(mymodel)
+        q_batch_size=1
+        input_shape = mymodel.inputs[0].shape.as_list()
+        input_shape[0] = q_batch_size
+        qfunc = tf.function(mymodel).get_concrete_function(
+            tf.TensorSpec(input_shape, model.inputs[0].dtype)
+        )
+        converter = tf.lite.TFLiteConverter.from_concrete_functions([qfunc])
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         def representative_data_gen():
             for datum in val_ds.take(500):
